@@ -1,49 +1,37 @@
 import sys
 import json
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
+import argparse
 
-url = sys.argv[1]  # Get the URL from the command line
-flag = sys.argv[2]  # Get the flag from the command line
 
-user_score_list = []
-counter = 0
 
-# Loop through all the pages of the leaderboard
-while url and counter < 100:
-    r = requests.get(url)
-    r.content
+def scrape_user_scores(url):
+    user_score_list = []
+    counter = 0
+    session = requests.Session()
 
-    soup = BeautifulSoup(r.content, 'html.parser')
+    while url and counter < 100:
+        r = session.get(url)
+        soup = BeautifulSoup(r.content, 'html.parser')
 
-    # Find the 'leftside' div
-    leftside_div = soup.find('div', class_='leftside')
+        leftside_div = soup.select_one('div.leftside')
 
-    # Find the genres and themes
-    if flag != 'user_list':
         genres_and_themes = []
-        for div in leftside_div.find_all('div', class_='spaceit_pad'):
-            dark_text = div.find('span', class_='dark_text')
+        for div in leftside_div.select('div.spaceit_pad'):
+            dark_text = div.select_one('span.dark_text')
             if dark_text and (dark_text.text.strip() == 'Genres:' or dark_text.text.strip() == 'Themes:'):
-                genres_and_themes.extend([a.text for a in div.find_all('a')])
-        if flag == 'genres_only':
-            break
+                genres_and_themes.extend([a.text for a in div.select('a')])
 
-    # Scrape user scores only if the flag is not 'genres_only'
-    if flag != 'genres_only' and flag != 'user_list':
-        # Find all the rows in the table
-        rows = soup.find_all('tr')
-
-        # For each row, find the username and score and add them to a list
-        for row in rows:
-            username = row.find('a', class_='word-break')
-            score = row.find('td', class_='borderClass ac')
-            if username and score:  # Make sure both elements were found
+        rows = soup.select('tr')
+        for i, row in enumerate(rows):
+            username = row.select_one('a.word-break')
+            score = row.select_one('td.borderClass.ac')
+            if username and score:
                 score_text = score.text.strip()
-                # Check if score is numeric, if not, set it to '0'
-                if not score_text.isdigit():
+                if not score_text.isnumeric():
                     score_text = '0'
                 if score_text == '10':
                     user_score_list.append({'username': username.text, 'score': score_text})
@@ -51,56 +39,50 @@ while url and counter < 100:
                     if counter >= 100:
                         break
 
+        next_page = soup.select_one('a:contains("Next Page")')
+        url = next_page['href'] if next_page else None
+
+    return {'user_scores': user_score_list, 'genres_and_themes': genres_and_themes}
 
 
+def scrape_top_anime(url):
+    options = Options()
+    options.add_argument('--headless')
+    anime_list = []
 
-    # Scrape top 5 anime from user's list if the flag is 'user_list'
-    if flag == 'user_list':
-        # Set up headless mode
-        options = Options()
-        options.headless = True
-
-        # Create a new instance of the Firefox driver
-        driver = webdriver.Firefox(options=options)
-
-        # Go to the webpage
+    with webdriver.Firefox(options=options) as driver:
         driver.get(url)
-
-        # Wait for the page to load and JavaScript to execute
         driver.implicitly_wait(10)
 
-        anime_list = []
         list_items = driver.find_elements('css selector', 'tr.list-table-data')
         for i, item in enumerate(list_items):
-            if i >= 5:  # Only get the top 5 anime
+            if i >= 5:
                 break
             anime_link = item.find_element('css selector', 'td.data.title.clearfix > a.link.sort')
             anime_url = anime_link.get_attribute('href')
             anime_title = anime_link.text.strip()
             anime_id = anime_url.split('/')[-2]
             anime_list.append({
-            'title': anime_title,
-            'url': anime_url,
-            'mal_id': anime_id
+                'title': anime_title,
+                'url': anime_url,
+                'mal_id': anime_id
             })
-        print(json.dumps(anime_list))  # Print the list of anime as JSON
-        driver.close()
-        break
 
-    # Don't forget to close the driver when you're done
+    return anime_list
 
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('url', help='URL of the leaderboard or user list')
+    parser.add_argument('flag', help='Flag to indicate what to scrape: user_scores, genres_and_themes, or top_anime')
+    args = parser.parse_args()
 
+    if args.flag == 'user_scores' or args.flag == 'genres_and_themes':
+        result = scrape_user_scores(args.url)
+    elif args.flag == 'top_anime':
+        result = scrape_top_anime(args.url)
+    else:
+        print('Invalid flag')
+        sys.exit(1)
 
-    if counter >= 100:
-        break
-
-    # Find the "Next Page" link
-    next_page = soup.find('a', text='Next Page')
-    url = next_page['href'] if next_page else None
-
-# Output the user scores and genres/themes based on the flag
-if flag == 'genres_only':
-    print(json.dumps({'genres_and_themes': genres_and_themes}))
-else:
-    print(json.dumps({'user_scores': user_score_list, 'genres_and_themes': genres_and_themes}))
+    print(json.dumps(result))
