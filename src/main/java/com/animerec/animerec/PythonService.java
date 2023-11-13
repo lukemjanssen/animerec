@@ -10,8 +10,8 @@ import java.io.*;
 @Service
 public class PythonService {
 
-    public String runPythonScript(String url) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder("python", "src/main/resources/scripts/userScrape.py", url);
+    public String runPythonScript(String url, String flag) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder("python", "src/main/resources/scripts/userScrape.py", url, flag);
         Process p = pb.start();
 
         BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
