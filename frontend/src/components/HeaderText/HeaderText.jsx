@@ -1,23 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Fade, Typography } from '@mui/material';
 
-const phrases = ['Welcome to the Anime Recommender','Never have a bad anime pick again', 'Find out your next favorite anime', 'Get yourself some great anime takes', 'For when you just finished a great anime, but want more', 'TODO: Add more phrases'];
+import { useAnimeContext } from '../../contexts/recanimepage';
 
 const HeaderText = () => {
+    const { phrases } = useAnimeContext();
     const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
     const [transitioning, setTransitioning] = useState(true);
+    const phraseLen = useRef(phrases.length);
+    phraseLen.current = phrases.length;
 
     useEffect(() => {
         const intervalId = setInterval(() => {
             setTransitioning(false);
             setTimeout(() => {
                 setTransitioning(true)
-                setCurrentPhraseIndex((prevIndex) => (prevIndex + 1) % phrases.length);
+                setCurrentPhraseIndex((prevIndex) =>(prevIndex + 1) % phraseLen.current);
             }, 2000);
         }, 10000);
 
         return () => clearInterval(intervalId);
     }, []);
+
+    useEffect(() => {
+        phraseLen.current = phrases.length;
+        setCurrentPhraseIndex(0);
+    }, [phrases]);
 
     return (
         <Fade in={transitioning} timeout={2000}>

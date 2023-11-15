@@ -1,23 +1,15 @@
 import BasicAppBar from './components/AppBar/BasicAppBar';
-import HeaderText from './components/HeaderText/HeaderText';
-import SearchBar from './components/SearchBar/SearchBar';
-import Waves from './components/Waves/Waves';
-
-import { Box } from '@mui/material';
+import { RecAnimePageProvider } from './contexts/recanimepage';
+import RecommendByAnime from './pages/RecommendByAnime';
 
 function App() {
+  // TODO: Add more pages here (AppBar too) as needed
   return (
     <>
-      <Box sx={{zIndex:10}}>
-        <BasicAppBar />
-        <Box sx={{mt: '5%'}}>
-          <HeaderText />
-          <SearchBar />
-        </Box>
-      </Box>
-      <Box sx={{zIndex: -999}}>
-        <Waves />
-      </Box>
+      <BasicAppBar />
+      <RecAnimePageProvider>
+        <RecommendByAnime />
+      </RecAnimePageProvider>
     </>
   );
 }

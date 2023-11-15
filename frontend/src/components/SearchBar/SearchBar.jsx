@@ -2,16 +2,22 @@ import React, { useState } from 'react';
 import { TextField, Button, Box } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
+
+import { useAnimeContext } from '../../contexts/recanimepage';
 import './SearchBar.css';
+
 
 export default function SearchBar() {
     const [searchTerm, setSearchTerm] = useState('');
+    const { toggleLoading, selectPhrases } = useAnimeContext();
 
     const handleInputChange = (event) => {
         setSearchTerm(event.target.value);
     };
 
     const handleSubmit = (event) => {
+        toggleLoading();
+        selectPhrases('loading')
         event.preventDefault();
         console.log(searchTerm);
     };
@@ -49,7 +55,7 @@ export default function SearchBar() {
                     }
                 }}
                 />                
-                <Button variant="contained" color="mal" type="submit" sx={{ mt: 2 }}>Search</Button>
+                <Button className="submit-button" variant="contained" color="mal" type="submit" sx={{ mt: 2, color:'#fff', borderRadius: '30px' }}>Search</Button>
             </Box>
         </div>
     );
