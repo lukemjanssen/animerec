@@ -27,6 +27,13 @@ const HeaderText = () => {
         setCurrentPhraseIndex(0);
     }, [phrases]);
 
+    if (phrases.length === 1){
+        return (
+            <Fade in={true} timeout={2000}>
+                <Typography variant="h2" style={{textAlign: 'center', color: 'white', fontFamily: 'Poppins'}}>{phrases[0]}</Typography>
+            </Fade>
+        );
+    }
     return (
         <Fade in={transitioning} timeout={2000}>
             <Typography variant="h2" style={{textAlign: 'center', color: 'white', fontFamily: 'Poppins'}}>{phrases[currentPhraseIndex]}</Typography>

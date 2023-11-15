@@ -4,11 +4,13 @@ import SearchBar from '../components/SearchBar/SearchBar';
 import Waves from '../components/Waves/Waves';
 import BouncyLoading from '../components/BouncyLoading/BouncyLoading';
 
-import { Box, Button, Grow, Slide } from '@mui/material';
+import { Box, Button, Divider, Grow, Slide } from '@mui/material';
 import { useAnimeContext } from '../contexts/recanimepage';
+import AnimeCard from '../components/AnimeCard/AnimeCard';
+import FoundAnimes from '../components/FoundAnimes/FoundAnimes';
 
 export default function RecommendByAnime() {
-    const { loading } = useAnimeContext();
+    const { loading, toggleLoading, animeList, setAnimeList, selectPhrases } = useAnimeContext();
 
     return (
     <>
@@ -27,9 +29,15 @@ export default function RecommendByAnime() {
                     bottom: 0,
                 }}>
                         <BouncyLoading />
+                        <Button variant="contained" color="mal" sx={{ mt: 2, color:'#fff', borderRadius: '30px' }} onClick={()=>{toggleLoading(); selectPhrases('found'); setAnimeList(['a'])}}>DEBUG: Finish search</Button>
                     </Box>
                 </Slide>
-                <Grow direction='up' in={!loading} mountOnEnter unmountOnExit timeout={1000}>
+                <Slide direction='up' in={!loading && !!animeList.length} mountOnEnter unmountOnExit timeout={1000}>
+                    <Box sx={{width:'100%'}}>
+                        <FoundAnimes />
+                    </Box>
+                </Slide>
+                <Grow direction='up' in={!loading && !animeList.length} mountOnEnter unmountOnExit timeout={1000}>
                     <Box>
                         <SearchBar />
                     </Box>

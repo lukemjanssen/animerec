@@ -9,10 +9,12 @@ export function RecAnimePageProvider({ children }) {
     const phraseDict = {
         "idle": ['Welcome to the Anime Recommender','Never have a bad anime pick again', 'Find out your next favorite anime', 'Get yourself some great anime takes', 'For when you just finished a great anime, but want more', 'TODO: Add more phrases'],
         "loading": ['Loading your animes...', 'This process usually takes a few minutes', 'Handpicking relevant options...', 'Consulting with our anime experts', 'TODO: Add more phrases'],
+        "found": ['Here\'s our picks for you:']
     }
 
     const [loading, setLoading] = useState(false);
     const [phrases, setPhrases] = useState(phraseDict['idle']);
+    const [animeList, setAnimeList] = useState([]);
 
     // Function to toggle loading state
     const toggleLoading = () => {
@@ -28,7 +30,9 @@ export function RecAnimePageProvider({ children }) {
         loading,
         toggleLoading,
         phrases,
-        selectPhrases
+        selectPhrases,
+        animeList,
+        setAnimeList
     }
 
     return (
