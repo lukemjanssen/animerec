@@ -3,7 +3,6 @@ package com.animerec.animerec;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -14,6 +13,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -62,11 +62,11 @@ public class AnimerecApplication {
      * 
      * @param args Command line arguments
      */
-    public static void main(String[] args) throws IOException, InterruptedException{
+    public static void main(String[] args) throws IOException, InterruptedException {
         SpringApplication.run(AnimerecApplication.class, args);
         String url1 = "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
         AnimerecApplication animerecApplication = new AnimerecApplication(new PythonService());
-        List<Anime> animeList1 = animerecApplication.getRecList(url1);      
+        List<Anime> animeList1 = animerecApplication.getRecList(url1);
     }
 
     /**
@@ -83,7 +83,8 @@ public class AnimerecApplication {
         List<Anime> animeList = new ArrayList<>();
 
         // HARDCODED URL FOR TESTING PURPOSES
-        // String debUrl = "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
+        // String debUrl =
+        // "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
 
         // Parse title from url:
         String inputTitle = url.substring(30, url.length() - 6);
@@ -139,24 +140,37 @@ public class AnimerecApplication {
                                     .collect(Collectors.toList()));
                 });
 
-        // Print the top 10 recommended anime
+        // Find the top 10 recs from the list of all matching anime
         allMatchingAnimeListFuture.thenAcceptAsync(allMatchingAnimeList -> {
             Map<Anime, Long> animeCounts = allMatchingAnimeList.stream()
                     .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-            List<Anime> sortedAnimeList = animeCounts.entrySet().stream()
+            // In the PriorityQueue initialization
+            PriorityQueue<Anime> filteredAnimeQueue = new PriorityQueue<Anime>(10, new Comparator<Anime>() {
+                @Override
+                public int compare(Anime a1, Anime a2) {
+                    int weight1 = a1.getWeight() + a1.getFrequencyWeight();
+                    int weight2 = a2.getWeight() + a2.getFrequencyWeight();
+                    return Integer.compare(weight2, weight1);
+                }
+            });
+
+            // In the forEach method
+            animeCounts.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                     .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-
-            List<Anime> filteredAnimeList = sortedAnimeList.stream()
-                    .filter(anime -> !anime.getTitle().equals(inputTitle))
-                    .collect(Collectors.toList());
+                    .forEach(anime -> {
+                        anime.setFrequencyWeight(animeCounts.get(anime).intValue());
+                        filteredAnimeQueue.add(anime);
+                    });
 
             for (int i = 0; i < 10; i++) {
-                Anime anime = filteredAnimeList.get(i);
-                System.out.println(anime.getTitle() + " (" + anime.getWeight() + ")");
-                animeList.add(anime);
+                Anime anime = filteredAnimeQueue.poll();
+                if (anime != null) {
+                    System.out.println(anime.getTitle() + " (" + anime.getWeight() + ")" + " ("
+                            + anime.getFrequencyWeight() + ")" + " " + anime.getFrequencyWeight() + " ");
+                    animeList.add(anime);
+                }
             }
         });
 
@@ -340,8 +354,5 @@ public class AnimerecApplication {
             return anime;
         }
     }
-
-
-
 
 }
