@@ -6,6 +6,7 @@ public class Anime {
     String title;
 
     private int weight;
+    private int frequencyWeight;
 
     // getters and setters...
     public String getTitle() {
@@ -27,4 +28,13 @@ public class Anime {
     public void setWeight(int weight) {
         this.weight = weight;
     }
+
+    public int getFrequencyWeight() {
+        return frequencyWeight;
+    }
+
+    public void setFrequencyWeight(int frequencyWeight) {
+        this.frequencyWeight = frequencyWeight;
+    }
+
 }

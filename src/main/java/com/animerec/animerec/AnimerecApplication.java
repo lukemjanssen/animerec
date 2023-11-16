@@ -3,11 +3,9 @@ package com.animerec.animerec;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,38 +13,83 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.google.common.util.concurrent.RateLimiter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * The main class for the Anime Recommendation application.
+ * This class is responsible for running the Python scripts, fetching data from
+ * the Jikan API, and processing the data to recommend similar anime to the
+ * input anime.
+ * The recommended anime are printed to the console.
+ */
 @SpringBootApplication
 public class AnimerecApplication {
 
+    // Service for running Python scripts
     private final PythonService pythonService;
+
+    // HTTP client for making API requests
     private final OkHttpClient client = new OkHttpClient();
+
+    // Object mapper for parsing JSON responses
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private final Semaphore perSecondSemaphore = new Semaphore(3); // replace with per-second limit
+    private final Semaphore perMinuteSemaphore = new Semaphore(60); // replace with per-minute limit
+
+    /**
+     * Constructor for AnimerecApplication.
+     * 
+     * @param pythonService Service for running Python scripts
+     */
     @Autowired
     public AnimerecApplication(PythonService pythonService) {
         this.pythonService = pythonService;
     }
 
-    public static void main(String[] args) {
+    /**
+     * Main method for running the application.
+     * 
+     * @param args Command line arguments
+     */
+    public static void main(String[] args) throws IOException, InterruptedException {
         SpringApplication.run(AnimerecApplication.class, args);
+        String url1 = "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
+        AnimerecApplication animerecApplication = new AnimerecApplication(new PythonService());
+        List<Anime> animeList1 = animerecApplication.getRecList(url1);
     }
 
-    @PostConstruct
-    public void runPythonScript() throws IOException, InterruptedException {
-        String url = "https://myanimelist.net/anime/1639/Boku_no_Pico/stats?m=all#members";
-        String inputTitle = "Boku no Pico";
+    /**
+     * Method for running the Python script and generating anime recommendations.
+     * 
+     * @throws IOException          If there is an error reading the input or output
+     *                              of the Python script
+     * @throws InterruptedException If the thread is interrupted while waiting for
+     *                              the Python script to finish
+     */
+    public List<Anime> getRecList(String url) throws IOException, InterruptedException {
+
+        // Final return list.
+        List<Anime> animeList = new ArrayList<>();
+
+        // HARDCODED URL FOR TESTING PURPOSES
+        // String debUrl =
+        // "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
+
+        // Parse title from url:
+        String inputTitle = url.substring(30, url.length() - 6);
+
+        // Get user scores for the input anime
         CompletableFuture<List<UserScore>> userScoresFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 String output = pythonService.runPythonScript(url, "user_scores");
@@ -57,6 +100,7 @@ public class AnimerecApplication {
             }
         });
 
+        // Get genres for the input anime
         CompletableFuture<List<String>> inputAnimeGenresFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 String output = pythonService.runPythonScript(url, "user_scores");
@@ -67,9 +111,11 @@ public class AnimerecApplication {
             }
         });
 
+        // Filter user scores to only include the highest scores
         CompletableFuture<List<UserScore>> highestScoresFuture = userScoresFuture
                 .thenApplyAsync(this::filterHighestScores);
 
+        // Get a list of all anime that match the input anime's genres
         CompletableFuture<List<Anime>> allMatchingAnimeListFuture = highestScoresFuture
                 .thenComposeAsync(highestScores -> {
                     List<CompletableFuture<List<Anime>>> futures = highestScores.stream()
@@ -94,25 +140,54 @@ public class AnimerecApplication {
                                     .collect(Collectors.toList()));
                 });
 
+        // Find the top 10 recs from the list of all matching anime
         allMatchingAnimeListFuture.thenAcceptAsync(allMatchingAnimeList -> {
             Map<Anime, Long> animeCounts = allMatchingAnimeList.stream()
                     .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
-            List<Anime> sortedAnimeList = animeCounts.entrySet().stream()
+            // In the PriorityQueue initialization
+            PriorityQueue<Anime> filteredAnimeQueue = new PriorityQueue<Anime>(10, new Comparator<Anime>() {
+                @Override
+                public int compare(Anime a1, Anime a2) {
+                    int weight1 = a1.getWeight() + a1.getFrequencyWeight();
+                    int weight2 = a2.getWeight() + a2.getFrequencyWeight();
+                    return Integer.compare(weight2, weight1);
+                }
+            });
+
+            // In the forEach method
+            animeCounts.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                     .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-
-            List<Anime> filteredAnimeList = sortedAnimeList.stream()
-                    .filter(anime -> !anime.getTitle().equals(inputTitle))
-                    .collect(Collectors.toList());
+                    .forEach(anime -> {
+                        anime.setFrequencyWeight(animeCounts.get(anime).intValue());
+                        filteredAnimeQueue.add(anime);
+                    });
 
             for (int i = 0; i < 10; i++) {
-                System.out.println(filteredAnimeList.get(i).getTitle());
+                Anime anime = filteredAnimeQueue.poll();
+                if (anime != null) {
+                    System.out.println(anime.getTitle() + " (" + anime.getWeight() + ")" + " ("
+                            + anime.getFrequencyWeight() + ")" + " " + anime.getFrequencyWeight() + " ");
+                    animeList.add(anime);
+                }
             }
         });
+
+        // Wait for all futures to complete
+        CompletableFuture.allOf(userScoresFuture, inputAnimeGenresFuture, highestScoresFuture,
+                allMatchingAnimeListFuture).join();
+
+        return animeList;
     }
 
+    /**
+     * Parses the user scores from the output of the Python script.
+     * 
+     * @param output Output of the Python script
+     * @return List of UserScore objects
+     * @throws IOException If there is an error parsing the JSON output
+     */
     private List<UserScore> parseUserScores(String output) throws IOException {
         JsonNode jsonNode = mapper.readTree(output);
         if (jsonNode.has("user_scores")) {
@@ -123,6 +198,13 @@ public class AnimerecApplication {
         }
     }
 
+    /**
+     * Parses the genres from the output of the Python script.
+     * 
+     * @param output Output of the Python script
+     * @return List of genre strings
+     * @throws IOException If there is an error parsing the JSON output
+     */
     private List<String> parseGenres(String output) throws IOException {
         JsonNode jsonNode = mapper.readTree(output);
         if (jsonNode.has("genres_and_themes")) {
@@ -133,6 +215,12 @@ public class AnimerecApplication {
         }
     }
 
+    /**
+     * Parses a list of anime from a JSON string.
+     * 
+     * @param output JSON string containing a list of anime
+     * @return List of Anime objects
+     */
     private List<Anime> parseAnimeList(String output) {
         try {
             return mapper.readValue(output, new TypeReference<List<Anime>>() {
@@ -143,32 +231,77 @@ public class AnimerecApplication {
         }
     }
 
+    /**
+     * Filters the list of user scores to only include the highest scores.
+     * 
+     * @param userScores List of UserScore objects
+     * @return List of UserScore objects with a score of 10
+     */
     private List<UserScore> filterHighestScores(List<UserScore> userScores) {
         return userScores.stream()
                 .filter(userScore -> userScore.getScore() == 10)
                 .collect(Collectors.toList());
     }
 
-    // Create a RateLimiter that allows 3 requests per second
-    RateLimiter rateLimiterPerSecond = RateLimiter.create(3.0);
-    // Create a RateLimiter that allows 60 requests per minute
-    RateLimiter rateLimiterPerMinute = RateLimiter.create(60.0);
+    // // Create a RateLimiter that allows 3 requests per second
+    // RateLimiter rateLimiterPerSecond = RateLimiter.create(3.0);
+    // // Create a RateLimiter that allows 60 requests per minute
+    // RateLimiter rateLimiterPerMinute = RateLimiter.create(60.0);
 
+    /**
+     * Gets a list of the user's favorite anime that contain similar genres to the
+     * input anime.
+     * 
+     * @param username         Username of the user
+     * @param inputAnimeGenres List of genres for the input anime
+     * @return List of Anime objects
+     * @throws IOException If there is an error making the API request or parsing
+     *                     the response
+     */
     public List<Anime> getUserFavoritesContainingSimilarGenres(String username, List<String> inputAnimeGenres)
             throws IOException {
 
-        // Acquire a permit from both rate limiters
-        rateLimiterPerSecond.acquire();
-        rateLimiterPerMinute.acquire();
-        
-        Request request = new Request.Builder()
-                .url("https://api.jikan.moe/v4/users/" + username + "/favorites")
-                .build();
-        Response response = client.newCall(request).execute();
+        // Make the API call
+        Response response = null;
+        boolean acquired = false;
+        try {
+            // Acquire the per-second and per-minute permits before making the API call
+            try {
+                perSecondSemaphore.acquire();
+                perMinuteSemaphore.acquire();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // Preserve the interrupt status
+                // Handle the exception
+                System.err.println("Thread was interrupted while waiting for a permit.");
+                return null;
+            }
 
-        if (!response.isSuccessful()) {
-            System.err.println("API call failed with response: " + response.body().string());
-            return null;
+            Request request = new Request.Builder()
+                    .url("https://api.jikan.moe/v4/users/" + username + "/favorites")
+                    .build();
+            acquired = true;
+            response = client.newCall(request).execute();
+
+            if (!response.isSuccessful()) {
+                System.err.println("API call failed with response: " + response.body().string());
+                return null;
+            }
+        } finally {
+            if (acquired) {
+                // Release the per-second permit immediately
+                perSecondSemaphore.release();
+
+                // Schedule the release of the per-minute permit after 60 seconds
+                new Thread(() -> {
+                    try {
+                        TimeUnit.SECONDS.sleep(60);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        perMinuteSemaphore.release();
+                    }
+                }).start();
+            }
         }
 
         UserFavoritesResponse userFavorites = mapper.readValue(response.body().string(), UserFavoritesResponse.class);
@@ -210,6 +343,9 @@ public class AnimerecApplication {
         return matchingFavorites;
     }
 
+    /**
+     * Response object for the Jikan API call to get user favorites.
+     */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserFavoritesResponse {
         private List<Anime> anime;
@@ -218,4 +354,5 @@ public class AnimerecApplication {
             return anime;
         }
     }
+
 }
