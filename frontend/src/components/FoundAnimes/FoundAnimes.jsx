@@ -11,17 +11,25 @@ export default function FoundAnimes() {
                 <AnimeCard anime={{title: "Best anime", synopsis: "Sample Synopsis"}} position={1}/>
                 <AnimeCard anime={{title: "Third best", synopsis: "Sample Synopsis"}} position={3}/>
             </Box>
-            <Box sx={{ position: 'absolute', bottom:'-50%', width:'100%' }}> {/* This is a hacky way to make the divider appear at the bottom of the page. */}
-                <Divider sx={{
-                    "&::before, &::after": {
-                        borderColor: "#000",
-                    },}}>
-                    <Typography variant='h5'>
-                        Here's other choices that might suit you
-                    </Typography>
-                </Divider>
-                <Box sx={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', flexDirection: 'row'}}>
-                    <AnimeCard anime={{title: "Sample Title", synopsis: "Sample Synopsis"}}/>
+            <Box sx={{marginTop:'10%', height:'100%'}}>
+                <Box sx={{width:'100%',display:'flex', justifyContent:'center'}}>
+                    <Box sx={{
+                            border: '2px solid #000',
+                            borderRadius: '25px',
+                            background: "rgb(255,255,255)",
+                            background: "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(218,218,218,1) 80%, rgba(100,100,100,1) 100%)",
+                            boxShadow: "rgba(0, 0, 0, 0.2) 0px 60px 40px -7px;",
+                            width: '50%',
+                        }}>
+                        <Typography variant='h5' sx={{display:'flex', justifyContent:'center'}}>
+                            Here's other choices that might suit you
+                        </Typography>
+                    </Box>
+                </Box>
+                <Box className={"seguraLixo"} sx={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', flexDirection: 'row', alignItems:'center', mt:'5%'}}>
+                    <Box sx={{display:'flex', justifyContent:'center'}}>
+                        <AnimeCard anime={{title: "Sample Title", synopsis: "Sample Synopsis"}}/>
+                    </Box>
                     <AnimeCard anime={{title: "Sample Title", synopsis: "Sample Synopsis"}}/>
                     <AnimeCard anime={{title: "Sample Title", synopsis: "Sample Synopsis"}}/>
                     <AnimeCard anime={{title: "Sample Title", synopsis: "Sample Synopsis"}}/>

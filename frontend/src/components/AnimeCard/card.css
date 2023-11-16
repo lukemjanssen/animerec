@@ -1,21 +1,14 @@
-.popCard {
-    display: block;
-    top: 0px;
-    position: relative;
-    max-width: 300px;
-    border-radius: 2px;
-    margin: 12px;
-    text-decoration: none;
-    z-index: 0;
-    overflow: hidden;
-    transition: all 0.3s ease-out;
-
-}
-
 .flip-card:hover {
     transition: all 0.5s ease-out;
     top: -4px;
-    transform: scale(1.05);
+    transform: scale(1.05);}
+
+.top:hover {
+    box-shadow: #e1e7f5 0px 12px 35px 2px;
+}
+
+.default:hover {
+    box-shadow: #000 0px 12px 35px 2px;
 }
 
 .flip-card.flipped:hover {
@@ -25,10 +18,12 @@
 }
 
 .flip-card {
+    height: 100%;
     perspective: 1000px;
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.5s;
+    border-radius: 25px;
 }
  
 .flip-card.flipped {

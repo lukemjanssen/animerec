@@ -10,14 +10,15 @@ import AnimeCard from '../components/AnimeCard/AnimeCard';
 import FoundAnimes from '../components/FoundAnimes/FoundAnimes';
 
 export default function RecommendByAnime() {
+    const containerRef = React.useRef(null);
     const { loading, toggleLoading, animeList, setAnimeList, selectPhrases } = useAnimeContext();
 
     return (
     <>
-        <Box sx={{zIndex:10}}>
+        <Box sx={{zIndex:10}} ref={containerRef}>
             <Box sx={{mt: '5%'}}>
                 <HeaderText />
-                <Slide direction='up' in={loading} mountOnEnter unmountOnExit timeout={1000}>
+                <Slide direction='up' in={loading} mountOnEnter unmountOnExit timeout={1000} container={containerRef.current}>
                 <Box sx={{ 
                     display: 'flex', 
                     justifyContent: 'center', 
@@ -27,17 +28,18 @@ export default function RecommendByAnime() {
                     left: 0, 
                     right: 0, 
                     bottom: 0,
+                    position: 'fixed',
                 }}>
                         <BouncyLoading />
                         <Button variant="contained" color="mal" sx={{ mt: 2, color:'#fff', borderRadius: '30px' }} onClick={()=>{toggleLoading(); selectPhrases('found'); setAnimeList(['a'])}}>DEBUG: Finish search</Button>
                     </Box>
                 </Slide>
-                <Slide direction='up' in={!loading && !!animeList.length} mountOnEnter unmountOnExit timeout={1000}>
+                <Slide direction='up' in={!loading && !!animeList.length} mountOnEnter unmountOnExit timeout={1000} container={containerRef.current}>
                     <Box sx={{width:'100%'}}>
                         <FoundAnimes />
                     </Box>
                 </Slide>
-                <Grow direction='up' in={!loading && !animeList.length} mountOnEnter unmountOnExit timeout={1000}>
+                <Grow direction='up' in={!loading && !animeList.length} mountOnEnter unmountOnExit timeout={1000} container={containerRef.current}>
                     <Box>
                         <SearchBar />
                     </Box>

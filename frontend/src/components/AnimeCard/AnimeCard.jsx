@@ -17,7 +17,7 @@ const AnimeCard = ({ anime, position }) => {
         1: '1.25',
         2: '1.05',
         3: '1',
-        'default': '0.8'
+        'default': '0.9'
     };
 
     const sizeBack = {
@@ -26,13 +26,13 @@ const AnimeCard = ({ anime, position }) => {
         3: '1.17',
         'default': '1.27'
     };
-    console.log(sizeFront[position] ?? 0.8, anime.title);
+
     const toggleFlipped = () => {
         setFlipped(!flipped);
     };
 
     const frontStyles = {
-        width: '100%',
+        width: 'auto',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -53,7 +53,7 @@ const AnimeCard = ({ anime, position }) => {
     };
 
     const backStyles = {
-        width: '100%',
+        width: 'auto',
         height: '100%',
         padding: '20px',
         scale: sizeBack[position] ?? 1.2,
@@ -66,11 +66,11 @@ const AnimeCard = ({ anime, position }) => {
         textAlign: 'center',
     };
 
+    console.log(anime.title, position, position==='default' ? "default" : "top");
     return (
         <div
-        className={`flip-card ${
-            flipped ? "flipped" : ""
-        }`}
+        className={`flip-card ${flipped ? "flipped" : ""} ${position==='default' ? "default" : "top"}
+        `.trim()}
         style={{
             width: "300px",
             height: "452px",
