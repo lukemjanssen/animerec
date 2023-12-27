@@ -64,9 +64,9 @@ public class AnimerecApplication {
      */
     public static void main(String[] args) throws IOException, InterruptedException {
         SpringApplication.run(AnimerecApplication.class, args);
-        String url1 = "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
-        AnimerecApplication animerecApplication = new AnimerecApplication(new PythonService());
-        List<Anime> animeList1 = animerecApplication.getRecList(url1);
+        //String url1 = "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
+        new AnimerecApplication(new PythonService());
+        //List<Anime> animeList1 = animerecApplication.getRecList(url1);
     }
 
     /**

@@ -61,11 +61,13 @@ def scrape_top_anime(url):
             anime_link = item.find_element('css selector', 'td.data.title.clearfix > a.link.sort')
             anime_url = anime_link.get_attribute('href')
             anime_title = anime_link.text.strip()
+            anime_img_url = item.find_element('css selector', 'td.image > div > a > img').get_attribute('src')
             anime_id = anime_url.split('/')[-2]
             anime_list.append({
                 'title': anime_title,
                 'url': anime_url,
-                'mal_id': anime_id
+                'mal_id': anime_id,
+                'anime_img_url': anime_img_url
             })
 
     return anime_list
