@@ -1,11 +1,14 @@
 import React from 'react';
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Box, Divider, Typography } from '@mui/material';
 import AnimeCard from '../AnimeCard/AnimeCard';
 
 export default function FoundAnimes() {
     const [animes, setAnimes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
 
     useEffect(() => {
         axios.get("http://localhost:8080/animecontroller/getrecs?url=https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members")
