@@ -1,5 +1,4 @@
 package com.animerec.animerec;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -82,12 +81,14 @@ public class AnimerecApplication {
         // Final return list.
         List<Anime> animeList = new ArrayList<>();
 
-        // HARDCODED URL FOR TESTING PURPOSES
-        // String debUrl =
-        // "https://myanimelist.net/anime/10165/Nichijou/stats?m=all#members";
+        // Parse anime ID from the URL
+        String[] urlParts = url.split("/");
+        String inputAnimeID = urlParts[urlParts.length - 3];
+        System.out.println("Anime ID: " + inputAnimeID);
 
-        // Parse title from url:
-        String inputTitle = url.substring(30, url.length() - 6);
+        // Parse anime title from the URL
+        String inputAnimeTitle = urlParts[urlParts.length - 2];
+        System.out.println("Anime Title: " + inputAnimeTitle);
 
         // Get user scores for the input anime
         CompletableFuture<List<UserScore>> userScoresFuture = CompletableFuture.supplyAsync(() -> {
@@ -103,7 +104,7 @@ public class AnimerecApplication {
         // Get genres for the input anime
         CompletableFuture<List<String>> inputAnimeGenresFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                String output = pythonService.runPythonScript(url, "user_scores");
+                String output = pythonService.runPythonScript(url, "genres_and_themes");
                 return parseGenres(output);
             } catch (IOException e) {
                 System.err.println("Error parsing input anime genres: " + e.getMessage());
@@ -122,7 +123,7 @@ public class AnimerecApplication {
                             .map(userScore -> CompletableFuture.supplyAsync(() -> {
                                 try {
                                     return getUserFavoritesContainingSimilarGenres(userScore.getUsername(),
-                                            inputAnimeGenresFuture.get()).stream()
+                                            inputAnimeGenresFuture.get(), inputAnimeID, inputAnimeTitle).stream()
                                             .map(obj -> (Anime) obj)
                                             .collect(Collectors.toList());
                                 } catch (Exception e) {
@@ -130,7 +131,7 @@ public class AnimerecApplication {
                                             "Error fetching user favorites for user: " + userScore.getUsername());
                                     return new ArrayList<Anime>();
                                 }
-                            }))
+                            }))             
                             .collect(Collectors.toList());
 
                     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
@@ -168,7 +169,7 @@ public class AnimerecApplication {
                 Anime anime = filteredAnimeQueue.poll();
                 if (anime != null) {
                     System.out.println(anime.getTitle() + " (" + anime.getWeight() + ")" + " ("
-                            + anime.getFrequencyWeight() + ")" + " " + anime.getFrequencyWeight() + " ");
+                            + anime.getFrequencyWeight() + ")" + " ");
                     animeList.add(anime);
                 }
             }
@@ -211,6 +212,7 @@ public class AnimerecApplication {
             return mapper.convertValue(jsonNode.get("genres_and_themes"), new TypeReference<List<String>>() {
             });
         } else {
+            System.out.println("No genres found in the output: " + output);
             return new ArrayList<>();
         }
     }
@@ -258,7 +260,8 @@ public class AnimerecApplication {
      * @throws IOException If there is an error making the API request or parsing
      *                     the response
      */
-    public List<Anime> getUserFavoritesContainingSimilarGenres(String username, List<String> inputAnimeGenres)
+    public List<Anime> getUserFavoritesContainingSimilarGenres(String username, List<String> inputAnimeGenres,
+        String inputAnimeID, String inputAnimeTitle)
             throws IOException {
 
         // Make the API call
@@ -326,7 +329,9 @@ public class AnimerecApplication {
             List<String> genres = parseGenres(outpString);
             if (genres != null) {
                 for (String genre : genres) {
-                    if (inputAnimeGenresSet.contains(genre)) {
+                    if (inputAnimeGenresSet.contains(genre) && !anime.getMal_id().equals(inputAnimeID)
+                            && !anime.getTitle().contains(inputAnimeTitle)) {
+                        System.out.println("Matching anime: " + anime.getTitle() + " (" + genres + ")");
                         anime.setWeight(anime.getWeight() + 1);
                     }
                 }

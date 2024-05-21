@@ -4,11 +4,15 @@ public class Anime {
     String mal_id;
     String url;
     String title;
-
+    String anime_img_url;
     private int weight;
     private int frequencyWeight;
 
     // getters and setters...
+    public String getAnime_img_url() {
+        return anime_img_url;
+    }
+
     public String getTitle() {
         return title;
     }
